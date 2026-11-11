@@ -1,5 +1,6 @@
 import React, {useState, useCallback} from 'react';
 import {
+  Alert,
   View,
   Text,
   TextInput,
@@ -22,6 +23,7 @@ import {navigate} from '$helpers/navigationUtils';
 import {playSound} from '$helpers/SoundUtils';
 import {IMAGES} from '$assets/images';
 import {styles} from './styles';
+import {MAX_BOTS_PER_MATCH} from '../../engine/bot';
 
 // Ludo King colour palette per player slot — must match board pocket order
 // Board: P1=Red  P2=Green  P3=Yellow  P4=Blue
@@ -53,9 +55,21 @@ const PlayerSetupScreen = () => {
 
   const toggleAi = useCallback((seat: number) => {
     playSound('ui');
-    setAiSeats(prev =>
-      prev.includes(seat) ? prev.filter(n => n !== seat) : [...prev, seat],
-    );
+    setAiSeats(prev => {
+      if (prev.includes(seat)) {
+        return prev.filter(n => n !== seat);
+      }
+      // The cap is enforced here as well as in the engine, so the rule is visible at the
+      // moment a player tries to break it rather than silently ignored.
+      if (prev.length >= MAX_BOTS_PER_MATCH) {
+        Alert.alert(
+          'Two bots maximum',
+          `A match can hold at most ${MAX_BOTS_PER_MATCH} bots, so the table never turns into bots playing each other.`,
+        );
+        return prev;
+      }
+      return [...prev, seat];
+    });
   }, []);
 
   const handleNameChange = useCallback((idx: number, val: string) => {
