@@ -1,11 +1,20 @@
 name: Build APK
 
-# Builds a debug APK from this React Native project.
-# Notes on why it looks like this:
+# Builds a STANDALONE APK.
+#
+# Why release and not debug: a debug build does not carry its JavaScript, it expects the Metro
+# dev server on localhost:8081. Installed on a phone with no Metro running, it dies with
+# "Unable to load script. Make sure you're either running Metro... or that your bundle
+# 'index.android.bundle' is packaged correctly" — which is exactly the failure this workflow
+# now prevents. A release build bundles the JS into assets/ and runs on its own.
+#
+# The release variant is signed with the debug keystore unless LUDO_KEYSTORE_PATH is set, so CI
+# can build without secrets; that is fine for testing and must not be used for a store upload.
+#
+# Two other things worth knowing about this file:
 #   * the repo's checked-in gradle-wrapper.jar cannot load its main class on the runner, so the
-#     build uses a real Gradle distribution installed by gradle/actions/setup-gradle instead;
-#   * the Android SDK is already on the image, so sdkmanager is called directly rather than
-#     through a setup action that fails on the current ubuntu release.
+#     build uses a real Gradle distribution from gradle/actions/setup-gradle;
+#   * the Android SDK is already on the image, so sdkmanager is called directly.
 
 on:
   push:
@@ -47,15 +56,31 @@ jobs:
       - name: Install JS dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Build debug APK
+      - name: Typecheck and unit tests
+        run: |
+          npx tsc --noEmit
+          npx jest --silent
+
+      - name: Build release APK
         working-directory: android
-        run: gradle assembleDebug --stacktrace --no-daemon
+        run: gradle assembleRelease --stacktrace --no-daemon
+
+      - name: Verify the APK carries its own JavaScript
+        run: |
+          APK=$(find android/app/build/outputs/apk/release -name '*.apk' | head -n1)
+          echo "APK: $APK"
+          if ! unzip -l "$APK" | grep -q 'assets/index.android.bundle'; then
+            echo "::error::assets/index.android.bundle is missing — this APK would need Metro and would fail on a phone."
+            exit 1
+          fi
+          echo "Bundled JS present: OK"
+          ls -lh "$APK"
 
       - name: Upload APK
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ludo-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: ludo-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: warn
           retention-days: 14
