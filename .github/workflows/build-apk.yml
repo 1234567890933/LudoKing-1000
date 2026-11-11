@@ -1,7 +1,9 @@
 name: Build APK
 
 # Builds a debug APK from this React Native project and publishes it as an artifact.
-# React Native 0.73 needs Node 20 and JDK 17; the Android SDK comes preinstalled on the runner.
+# React Native 0.73 needs Node 20 and JDK 17. The Android SDK is already on the runner, so the
+# sdkmanager is called directly instead of via a setup action that has been failing on the
+# current ubuntu image.
 
 on:
   push:
@@ -26,15 +28,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK packages
+      - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          set +o pipefail
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKM" ] || SDKM="$(command -v sdkmanager)"
+          echo "sdkmanager: $SDKM"
+          yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+          "$SDKM" "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
 
       - name: Install JS dependencies
         run: npm ci --no-audit --no-fund
