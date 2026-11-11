@@ -6,22 +6,48 @@
     "skipLibCheck": true,
     "baseUrl": "./",
     "allowJs": false,
-    "types": ["react-native", "jest"],
+    "types": [
+      "react-native",
+      "jest"
+    ],
     "jsx": "react-native",
     "noImplicitAny": true,
     "moduleResolution": "Bundler",
     "target": "ESNext",
-    "lib": ["ESNext"],
+    "lib": [
+      "ESNext"
+    ],
     "paths": {
-      "$assets/*": ["src/assets/*"],
-      "$redux/*": ["src/redux/*"],
-      "$screens/*": ["src/screens/*"],
-      "$constants/*": ["src/constants/*"],
-      "$helpers/*": ["src/helpers/*"],
-      "$components/*": ["src/components/*"],
-      "$hooks/*": ["src/hooks/*"],
-      "$navigation/*": ["src/navigation/*"]
+      "$assets/*": [
+        "src/assets/*"
+      ],
+      "$redux/*": [
+        "src/redux/*"
+      ],
+      "$screens/*": [
+        "src/screens/*"
+      ],
+      "$constants/*": [
+        "src/constants/*"
+      ],
+      "$helpers/*": [
+        "src/helpers/*"
+      ],
+      "$components/*": [
+        "src/components/*"
+      ],
+      "$hooks/*": [
+        "src/hooks/*"
+      ],
+      "$navigation/*": [
+        "src/navigation/*"
+      ],
+      "$theme/*": [
+        "./src/theme/*"
+      ]
     },
-    "typeRoots": ["node_modules/@types"]
+    "typeRoots": [
+      "node_modules/@types"
+    ]
   }
 }
