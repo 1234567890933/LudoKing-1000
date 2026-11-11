@@ -10,8 +10,10 @@ import VerticalPath from '$components/VerticalPath';
 import {plot1data, plot2data, plot3data, plot4data} from '$helpers/PlotData';
 import HorizontalPath from '$components/HorizontalPath';
 import FourTriangle from '$components/FourTriangle';
-import {useAppSelector} from '$hooks/useAppStore';
+import {useAppSelector, useAppDispatch} from '$hooks/useAppStore';
 import {
+  selectAiPlayers,
+  selectCheatMode,
   selectDiceTouch,
   selectPlayer1,
   selectPlayer2,
@@ -22,6 +24,9 @@ import {
 } from '$redux/reducers/gameSelectors';
 import {useIsFocused} from '@react-navigation/native';
 import MenuModal from '$components/MenuModal';
+import BotControlBar from '$components/BotControlBar';
+import {setCheatMode} from '$redux/reducers/gameSlice';
+import {MAX_BOTS_PER_MATCH} from '../../engine/bot';
 import WinnerModal from '$components/WinnerModal';
 
 const LudoBoardScreen = () => {
@@ -32,6 +37,28 @@ const LudoBoardScreen = () => {
   const isDiceTouched = useAppSelector(selectDiceTouch);
   const winner = useAppSelector(selectWinner);
   const playerNames = useAppSelector(selectPlayerNames);
+  const cheatMode = useAppSelector(selectCheatMode);
+  const aiPlayers = useAppSelector(selectAiPlayers);
+  const dispatch = useAppDispatch();
+
+  // Mid-match takeover. Reuses the assist seat machinery rather than inventing a second one:
+  // a favoured, non-guaranteed seat rolls assisted dice and plays its own moves automatically,
+  // which is exactly what "the bot takes over until I am back" means.
+  const takeoverSeat = 1;
+  const takeoverOn =
+    cheatMode.enabled &&
+    cheatMode.favoredPlayer === takeoverSeat &&
+    cheatMode.guaranteed !== true;
+  const botsInMatch = aiPlayers.length + (takeoverOn ? 1 : 0);
+  const toggleTakeover = () => {
+    dispatch(
+      setCheatMode({
+        enabled: !takeoverOn,
+        favoredPlayer: takeoverOn ? 0 : takeoverSeat,
+        guaranteed: false,
+      }),
+    );
+  };
 
   // Colour palette aligned with board pocket mapping
   // P1=Red  P2=Green  P3=Yellow  P4=Blue
@@ -120,6 +147,13 @@ const LudoBoardScreen = () => {
             <Dice color={COLORS.yellow} rotate player={3} data={player3} />
           </View>
         </View>
+
+        <BotControlBar
+          seat={takeoverSeat}
+          takeover={takeoverOn}
+          onToggleTakeover={toggleTakeover}
+          botsInMatch={botsInMatch}
+        />
 
         <View style={styles.ludoBoardContainer}>
           <View style={styles.plotContainer}>
