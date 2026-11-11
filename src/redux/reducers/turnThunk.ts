@@ -14,6 +14,8 @@ import {seatRole} from '$helpers/seatRole';
 import {playerKey} from '$helpers/playerKeys';
 import {ApplicationDispatch, RootState} from '$redux/store';
 import {chooseMove} from '../../engine/ai';
+import {chooseStrongMove} from '../../engine/bot';
+import {victoryStart} from '$helpers/PlotData';
 import {GameModel} from '../../engine/gameEngine';
 import {
   rollGatedDice,
@@ -111,13 +113,31 @@ export const playTurnThunk =
       );
 
     if (role.auto) {
-      const move = chooseMove(
-        toModel(game),
-        player,
-        dice,
-        random,
-        role.ai ? game.aiDifficulty ?? 'hard' : 'hard',
-      );
+      const difficulty = role.ai ? game.aiDifficulty ?? 'hard' : 'hard';
+      const model = toModel(game);
+
+      // Hard seats use the advanced bot: partial vision of the opponent's next turn plus a
+      // 49 %-accurate peek at the upcoming dice, read from the same seeded stream the real
+      // rolls come from. Easy and normal keep the stock scoring, so a beginner still has a
+      // fair game against them.
+      const move =
+        difficulty === 'hard'
+          ? chooseStrongMove(
+              model,
+              player,
+              dice,
+              {
+                personality: 'oracle',
+                oracle: {
+                  seed: game.diceSeed,
+                  rollCount: (game.rollCount ?? 0) + 1,
+                  random,
+                },
+                random,
+              },
+              victoryStart,
+            )
+          : chooseMove(model, player, dice, random, difficulty);
       if (move) {
         dispatch(disableTouch());
         await wait(700 + Math.floor(random() * 800));
