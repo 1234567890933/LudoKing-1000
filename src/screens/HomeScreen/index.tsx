@@ -14,12 +14,17 @@ import {navigate} from '$helpers/navigationUtils';
 import LottieView from 'lottie-react-native';
 import {ANIMATATIONS} from '$assets/animation';
 import {DEVICE_WIDTH} from '$constants/dimensions';
+import GlassPanel from '$components/GlassPanel';
+import AnimatedPressable from '$components/AnimatedPressable';
+import {PALETTE} from '$theme/palette';
 
 const HomeScreen = () => {
   const dispatch = useAppDispatch();
   const currentPosition = useSelector(selectCurrentPosition);
   const isFocused = useIsFocused();
 
+  const entryLogo = useRef(new Animated.Value(0)).current;
+  const entryPanel = useRef(new Animated.Value(0)).current;
   const withAnim = useRef(new Animated.Value(-DEVICE_WIDTH)).current;
   const scaleXAnim = useRef(new Animated.Value(-1)).current;
 
@@ -28,6 +33,17 @@ const HomeScreen = () => {
       playSound('home');
     }
   }, [isFocused]);
+
+  // Staggered entrance: the mark settles first, then the panel rises under it. Two beats read
+  // as intentional; one simultaneous fade reads as a screen that just appeared.
+  useEffect(() => {
+    entryLogo.setValue(0);
+    entryPanel.setValue(0);
+    Animated.stagger(140, [
+      Animated.spring(entryLogo, {toValue: 1, useNativeDriver: true, speed: 12, bounciness: 8}),
+      Animated.spring(entryPanel, {toValue: 1, useNativeDriver: true, speed: 11, bounciness: 6}),
+    ]).start();
+  }, [entryLogo, entryPanel]);
 
   useEffect(() => {
     const loopAnimation = () => {
@@ -131,16 +147,60 @@ const HomeScreen = () => {
     Alert.alert('Cooming Soon');
   }, []);
 
+  // "VS Computer" used to be a dead button. It now opens the seat picker, which is where the
+  // bot personalities and the two-bot cap live.
+  const handleVsComputer = useCallback(() => {
+    stopSound();
+    navigate('PlayerSetupScreen', {vsComputer: true});
+  }, []);
+
   return (
     <Wrapper style={styles.wrapper}>
-      <Animated.View style={styles.imgContainer}>
+      <Animated.View
+        style={[
+          styles.imgContainer,
+          {
+            opacity: entryLogo,
+            transform: [
+              {
+                translateY: entryLogo.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-26, 0],
+                }),
+              },
+              {
+                scale: entryLogo.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.88, 1],
+                }),
+              },
+            ],
+          },
+        ]}>
         <Image source={IMAGES.Logo} style={styles.img} resizeMode={'contain'} />
       </Animated.View>
 
-      {currentPosition.length !== 0 && renderButton('RESUME', handleResumeGame)}
-      {renderButton('NEW GAME', handleNewGame)}
-      {renderButton('VS Computer', handleCoomingSoon)}
-      {renderButton('2 vs 2', handleCoomingSoon)}
+      <Animated.View
+        style={{
+          width: '100%',
+          paddingHorizontal: 22,
+          opacity: entryPanel,
+          transform: [
+            {
+              translateY: entryPanel.interpolate({
+                inputRange: [0, 1],
+                outputRange: [34, 0],
+              }),
+            },
+          ],
+        }}>
+        <GlassPanel intensity="mid" radius={26} accent={PALETTE.gold} style={{paddingBottom: 6}}>
+          {currentPosition.length !== 0 && renderButton('RESUME', handleResumeGame)}
+          {renderButton('NEW GAME', handleNewGame)}
+          {renderButton('VS Computer', handleVsComputer)}
+          {renderButton('2 vs 2', handleCoomingSoon)}
+        </GlassPanel>
+      </Animated.View>
 
       <Animated.View
         style={[
